@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { MetricCard } from "@/components/metric-card"
 import { FailuresList } from "@/components/failures-list"
-import Footer from "@/components/footer"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
@@ -20,6 +19,7 @@ const DEMO_METRICS = {
     hallucination: 0.03,
     tokenUsage: 1250,
     costPerRequest: 0.015,
+    errorRate: 1.2,
   },
   "claude-3": {
     latency: 1.58,
@@ -30,6 +30,7 @@ const DEMO_METRICS = {
     hallucination: 0.02,
     tokenUsage: 980,
     costPerRequest: 0.012,
+    errorRate: 0.8,
   },
   "gpt-35-turbo": {
     latency: 0.89,
@@ -40,6 +41,7 @@ const DEMO_METRICS = {
     hallucination: 0.05,
     tokenUsage: 1100,
     costPerRequest: 0.008,
+    errorRate: 2.1,
   },
 }
 
@@ -77,16 +79,15 @@ const COMPARISON_DATA = [
 ]
 
 const MODEL_OPTIONS = [
-  { label: "GPT-4.1", value: "gpt-4.1" },
-  { label: "GPT-4.1 Mini", value: "gpt-4.1-mini" },
-  { label: "Claude 3.5", value: "claude-3.5" },
-  { label: "Gemini 1.5", value: "gemini-1.5" },
+  { label: "Model A", value: "model-a" },
+  { label: "Model B", value: "model-b" },
+  { label: "Model C", value: "model-c" },
 ]
 
 export default function ResultsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<"metrics" | "failures">("metrics")
-  const [selectedModel, setSelectedModel] = useState("gpt-4.1")
+  const [selectedModel, setSelectedModel] = useState("model-a")
 
   const calculateAverageScore = () => {
     const metrics = Object.values(DEMO_METRICS)
@@ -101,17 +102,27 @@ export default function ResultsPage() {
   }
 
   const handleDownloadReport = () => {
-    const csvContent =
-      "Model,Accuracy,F1,Latency,Hallucination\n" +
-      "GPT-4,89%,87%,1.24s,3%\n" +
-      "Claude 3,91%,89%,1.58s,2%\n" +
-      "GPT-3.5,84%,82%,0.89s,5%"
+    const csvContent = `ModelLens — AI Model Dashboard Report
+Generated: ${new Date().toLocaleString()}
+
+PROBLEM STATEMENT:
+• Model operations teams need live metrics to maintain AI performance across deployments
+
+METRIC SUMMARY:
+• Average Score: ${calculateAverageScore()}%
+• Last Run Time: ${getLastRunTime()}
+
+DETAILED METRICS:
+Model,Latency (ms),Token Usage,Cost per Request,Error Rate (%),Accuracy,F1 Score
+GPT-4,${DEMO_METRICS["gpt-4"].latency * 1000},${DEMO_METRICS["gpt-4"].tokenUsage},\$${DEMO_METRICS["gpt-4"].costPerRequest},${DEMO_METRICS["gpt-4"].errorRate},${(DEMO_METRICS["gpt-4"].accuracy * 100).toFixed(0)}%,${(DEMO_METRICS["gpt-4"].f1 * 100).toFixed(0)}%
+Claude 3,${DEMO_METRICS["claude-3"].latency * 1000},${DEMO_METRICS["claude-3"].tokenUsage},\$${DEMO_METRICS["claude-3"].costPerRequest},${DEMO_METRICS["claude-3"].errorRate},${(DEMO_METRICS["claude-3"].accuracy * 100).toFixed(0)}%,${(DEMO_METRICS["claude-3"].f1 * 100).toFixed(0)}%
+GPT-3.5,${DEMO_METRICS["gpt-35-turbo"].latency * 1000},${DEMO_METRICS["gpt-35-turbo"].tokenUsage},\$${DEMO_METRICS["gpt-35-turbo"].costPerRequest},${DEMO_METRICS["gpt-35-turbo"].errorRate},${(DEMO_METRICS["gpt-35-turbo"].accuracy * 100).toFixed(0)}%,${(DEMO_METRICS["gpt-35-turbo"].f1 * 100).toFixed(0)}%`
 
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "model-evaluation-report.csv"
+    a.download = "modellens-report.csv"
     a.click()
     window.URL.revokeObjectURL(url)
   }
@@ -138,21 +149,78 @@ export default function ResultsPage() {
         </div>
       </nav>
 
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Header */}
-        <div className="mb-12 flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl font-bold mb-3">Evaluation Results</h1>
-            <p className="text-muted-foreground">Comprehensive metrics comparison across selected models</p>
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">ModelLens — AI Model Dashboard</h1>
+          <p className="text-lg text-muted-foreground mb-6">Designed & Built by Bhumi Kadam</p>
+
+          <Card className="border-border bg-gradient-to-r from-primary/5 to-accent/5 p-6 mb-8">
+            <div className="flex gap-4">
+              <div className="text-2xl">→</div>
+              <div>
+                <h3 className="font-semibold mb-2">Problem Statement</h3>
+                <p className="text-muted-foreground">
+                  • Model operations teams need live metrics to maintain AI performance across deployments
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div className="mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-border bg-card/50 backdrop-blur p-6 rounded-lg">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">• Latency (ms)</p>
+                  <p className="text-3xl font-bold">1.24</p>
+                  <p className="text-xs text-muted-foreground mt-3">Avg response time</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="border-border bg-card/50 backdrop-blur p-6 rounded-lg">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">• Token Usage</p>
+                  <p className="text-3xl font-bold">1,110</p>
+                  <p className="text-xs text-muted-foreground mt-3">Avg tokens per request</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="border-border bg-card/50 backdrop-blur p-6 rounded-lg">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">• Cost per Request</p>
+                  <p className="text-3xl font-bold">$0.012</p>
+                  <p className="text-xs text-muted-foreground mt-3">Avg cost per request</p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="border-border bg-card/50 backdrop-blur p-6 rounded-lg">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">• Error Rate (%)</p>
+                  <p className="text-3xl font-bold">1.4</p>
+                  <p className="text-xs text-muted-foreground mt-3">Avg error rate</p>
+                </div>
+              </div>
+            </Card>
           </div>
-          <div className="flex gap-3">
+        </div>
+
+        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground mb-2">Model Selection</p>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-48 bg-transparent">
                   {MODEL_OPTIONS.find((m) => m.value === selectedModel)?.label || "Select Model"}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent className="w-48">
                 {MODEL_OPTIONS.map((model) => (
                   <DropdownMenuItem key={model.value} onClick={() => setSelectedModel(model.value)}>
                     {model.label}
@@ -160,17 +228,17 @@ export default function ResultsPage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={handleDownloadReport} className="bg-primary hover:bg-primary/90">
-              Download Report
-            </Button>
           </div>
+          <Button onClick={handleDownloadReport} className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
+            Download Report (PDF)
+          </Button>
         </div>
 
-        <div className="mb-8 grid md:grid-cols-2 gap-6">
-          <Card className="border-border bg-card/50 backdrop-blur p-6">
+        <div className="grid md:grid-cols-2 gap-6 mb-10">
+          <Card className="border-border bg-card/50 backdrop-blur p-6 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Average Score</p>
+                <p className="text-sm text-muted-foreground mb-1">• Average Score</p>
                 <p className="text-3xl font-bold">{calculateAverageScore()}%</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -178,10 +246,10 @@ export default function ResultsPage() {
               </div>
             </div>
           </Card>
-          <Card className="border-border bg-card/50 backdrop-blur p-6">
+          <Card className="border-border bg-card/50 backdrop-blur p-6 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Last Run Time</p>
+                <p className="text-sm text-muted-foreground mb-1">• Last Run Time</p>
                 <p className="text-3xl font-bold">{getLastRunTime()}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
@@ -220,25 +288,12 @@ export default function ResultsPage() {
             {/* Metric Cards */}
             <div className="grid md:grid-cols-3 gap-6">
               <MetricCard title="Best Accuracy" value="91%" model="Claude 3" trend="+2%" />
-              <MetricCard title="Fastest Latency" value="0.89s" model="GPT-3.5 Turbo" trend="-0.3s" />
-              <MetricCard title="Lowest Hallucination" value="2%" model="Claude 3" trend="-1%" />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="border-border bg-card/50 backdrop-blur p-6">
-                <h3 className="font-semibold mb-2 text-sm text-muted-foreground">Token Usage (Avg)</h3>
-                <p className="text-3xl font-bold">1,110</p>
-                <p className="text-xs text-muted-foreground mt-2">Average tokens per request</p>
-              </Card>
-              <Card className="border-border bg-card/50 backdrop-blur p-6">
-                <h3 className="font-semibold mb-2 text-sm text-muted-foreground">Cost per Request (Avg)</h3>
-                <p className="text-3xl font-bold">$0.012</p>
-                <p className="text-xs text-muted-foreground mt-2">Average cost per request</p>
-              </Card>
+              <MetricCard title="Fastest Latency" value="0.89s" model="Model B" trend="-0.3s" />
+              <MetricCard title="Lowest Hallucination" value="2%" model="Model C" trend="-1%" />
             </div>
 
             {/* Comparison Charts */}
-            <Card className="border-border bg-card/50 backdrop-blur p-8">
+            <Card className="border-border bg-card/50 backdrop-blur p-8 rounded-lg">
               <h2 className="text-xl font-semibold mb-6">Model Comparison</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={COMPARISON_DATA}>
@@ -262,40 +317,44 @@ export default function ResultsPage() {
             {/* Detailed Metrics */}
             <div className="grid md:grid-cols-3 gap-6">
               {Object.entries(DEMO_METRICS).map(([modelName, metrics]) => (
-                <Card key={modelName} className="border-border bg-card/50 backdrop-blur p-6">
+                <Card key={modelName} className="border-border bg-card/50 backdrop-blur p-6 rounded-lg">
                   <h3 className="font-semibold mb-4 capitalize">{modelName}</h3>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Latency</span>
+                      <span className="text-muted-foreground">• Latency</span>
                       <span className="font-medium">{metrics.latency}s</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Accuracy</span>
+                      <span className="text-muted-foreground">• Accuracy</span>
                       <span className="font-medium">{(metrics.accuracy * 100).toFixed(0)}%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">F1 Score</span>
+                      <span className="text-muted-foreground">• F1 Score</span>
                       <span className="font-medium">{(metrics.f1 * 100).toFixed(0)}%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">BLEU</span>
+                      <span className="text-muted-foreground">• BLEU</span>
                       <span className="font-medium">{(metrics.bleu * 100).toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">ROUGE</span>
+                      <span className="text-muted-foreground">• ROUGE</span>
                       <span className="font-medium">{(metrics.rouge * 100).toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Hallucination</span>
+                      <span className="text-muted-foreground">• Hallucination</span>
                       <span className="font-medium">{(metrics.hallucination * 100).toFixed(1)}%</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-border">
-                      <span className="text-muted-foreground">Tokens</span>
+                      <span className="text-muted-foreground">• Tokens</span>
                       <span className="font-medium">{metrics.tokenUsage}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cost/Req</span>
+                      <span className="text-muted-foreground">• Cost/Req</span>
                       <span className="font-medium">${metrics.costPerRequest.toFixed(3)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">• Error Rate</span>
+                      <span className="font-medium">{metrics.errorRate}%</span>
                     </div>
                   </div>
                 </Card>
@@ -322,7 +381,11 @@ export default function ResultsPage() {
         </div>
       </main>
 
-      <Footer />
+      <footer className="border-t border-border bg-card/40 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+          <p className="text-sm text-muted-foreground">ModelLens — Designed & Built by Bhumi Kadam</p>
+        </div>
+      </footer>
     </div>
   )
 }
