@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { MetricCard } from "@/components/metric-card"
 import { FailuresList } from "@/components/failures-list"
 import Footer from "@/components/footer"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
 const DEMO_METRICS = {
@@ -17,6 +18,8 @@ const DEMO_METRICS = {
     bleu: 0.82,
     rouge: 0.85,
     hallucination: 0.03,
+    tokenUsage: 1250,
+    costPerRequest: 0.015,
   },
   "claude-3": {
     latency: 1.58,
@@ -25,6 +28,8 @@ const DEMO_METRICS = {
     bleu: 0.84,
     rouge: 0.87,
     hallucination: 0.02,
+    tokenUsage: 980,
+    costPerRequest: 0.012,
   },
   "gpt-35-turbo": {
     latency: 0.89,
@@ -33,6 +38,8 @@ const DEMO_METRICS = {
     bleu: 0.78,
     rouge: 0.81,
     hallucination: 0.05,
+    tokenUsage: 1100,
+    costPerRequest: 0.008,
   },
 }
 
@@ -69,9 +76,45 @@ const COMPARISON_DATA = [
   { model: "GPT-3.5", accuracy: 84, f1: 82, bleu: 78 },
 ]
 
+const MODEL_OPTIONS = [
+  { label: "GPT-4.1", value: "gpt-4.1" },
+  { label: "GPT-4.1 Mini", value: "gpt-4.1-mini" },
+  { label: "Claude 3.5", value: "claude-3.5" },
+  { label: "Gemini 1.5", value: "gemini-1.5" },
+]
+
 export default function ResultsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<"metrics" | "failures">("metrics")
+  const [selectedModel, setSelectedModel] = useState("gpt-4.1")
+
+  const calculateAverageScore = () => {
+    const metrics = Object.values(DEMO_METRICS)
+    const avg = metrics.reduce((sum, m) => sum + m.accuracy, 0) / metrics.length
+    return (avg * 100).toFixed(1)
+  }
+
+  const getLastRunTime = () => {
+    const now = new Date()
+    const minutesAgo = Math.floor(Math.random() * 120) + 5
+    return `${minutesAgo} min ago`
+  }
+
+  const handleDownloadReport = () => {
+    const csvContent =
+      "Model,Accuracy,F1,Latency,Hallucination\n" +
+      "GPT-4,89%,87%,1.24s,3%\n" +
+      "Claude 3,91%,89%,1.58s,2%\n" +
+      "GPT-3.5,84%,82%,0.89s,5%"
+
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "model-evaluation-report.csv"
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex flex-col">
@@ -102,9 +145,50 @@ export default function ResultsPage() {
             <h1 className="text-4xl font-bold mb-3">Evaluation Results</h1>
             <p className="text-muted-foreground">Comprehensive metrics comparison across selected models</p>
           </div>
-          <Button onClick={() => router.push("/export")} className="bg-primary hover:bg-primary/90">
-            Export Results
-          </Button>
+          <div className="flex gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  {MODEL_OPTIONS.find((m) => m.value === selectedModel)?.label || "Select Model"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {MODEL_OPTIONS.map((model) => (
+                  <DropdownMenuItem key={model.value} onClick={() => setSelectedModel(model.value)}>
+                    {model.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={handleDownloadReport} className="bg-primary hover:bg-primary/90">
+              Download Report
+            </Button>
+          </div>
+        </div>
+
+        <div className="mb-8 grid md:grid-cols-2 gap-6">
+          <Card className="border-border bg-card/50 backdrop-blur p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Average Score</p>
+                <p className="text-3xl font-bold">{calculateAverageScore()}%</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <span className="text-lg">📊</span>
+              </div>
+            </div>
+          </Card>
+          <Card className="border-border bg-card/50 backdrop-blur p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Last Run Time</p>
+                <p className="text-3xl font-bold">{getLastRunTime()}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
+                <span className="text-lg">⏱️</span>
+              </div>
+            </div>
+          </Card>
         </div>
 
         {/* Tabs */}
@@ -138,6 +222,19 @@ export default function ResultsPage() {
               <MetricCard title="Best Accuracy" value="91%" model="Claude 3" trend="+2%" />
               <MetricCard title="Fastest Latency" value="0.89s" model="GPT-3.5 Turbo" trend="-0.3s" />
               <MetricCard title="Lowest Hallucination" value="2%" model="Claude 3" trend="-1%" />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card className="border-border bg-card/50 backdrop-blur p-6">
+                <h3 className="font-semibold mb-2 text-sm text-muted-foreground">Token Usage (Avg)</h3>
+                <p className="text-3xl font-bold">1,110</p>
+                <p className="text-xs text-muted-foreground mt-2">Average tokens per request</p>
+              </Card>
+              <Card className="border-border bg-card/50 backdrop-blur p-6">
+                <h3 className="font-semibold mb-2 text-sm text-muted-foreground">Cost per Request (Avg)</h3>
+                <p className="text-3xl font-bold">$0.012</p>
+                <p className="text-xs text-muted-foreground mt-2">Average cost per request</p>
+              </Card>
             </div>
 
             {/* Comparison Charts */}
@@ -191,6 +288,14 @@ export default function ResultsPage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Hallucination</span>
                       <span className="font-medium">{(metrics.hallucination * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-border">
+                      <span className="text-muted-foreground">Tokens</span>
+                      <span className="font-medium">{metrics.tokenUsage}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Cost/Req</span>
+                      <span className="font-medium">${metrics.costPerRequest.toFixed(3)}</span>
                     </div>
                   </div>
                 </Card>
